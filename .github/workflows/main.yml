@@ -1,0 +1,25 @@
+name: Deploy to Ubuntu
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            cd /opt/trader1
+            git fetch origin main
+            git reset --hard origin/main
+            npm ci
+            pm2 restart trader1 || pm2 start server.js --name trader1
+            pm2 save
