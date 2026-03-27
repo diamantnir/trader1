@@ -423,7 +423,7 @@ app.get("/", (req, res) => {
         "=== Yahoo Summary ===",
         (summary && (summary.innerText || summary.textContent || "").trim()) || "(empty)"
       ];
-      var allText = textParts.join("\n");
+      var allText = textParts.join("\\n");
 
       async function tryClipboardWrite(t) {
         if (navigator.clipboard && navigator.clipboard.writeText) {
