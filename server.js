@@ -194,6 +194,7 @@ app.get("/", (req, res) => {
       <button type="button" id="btnDecision" style="background:#009688;">Pipeline: 6 steps + pre-filter (preview)</button>
       <button type="button" id="btnPayloadOnly" style="background:#00695c;">Classic single LLM payload only</button>
       <button type="button" id="btnCopyResults" style="background:#455a64;">Copy all results</button>
+      <button type="button" id="btnDownloadResults" style="background:#5d4037;">Download results (.txt)</button>
     </p>
   </div>
 
@@ -455,6 +456,43 @@ app.get("/", (req, res) => {
       } catch (e) {
         btn.textContent = "Copy failed";
       }
+      setTimeout(function () { btn.textContent = original; }, 1400);
+    };
+
+    document.getElementById("btnDownloadResults").onclick = function () {
+      var btn = this;
+      var topOut = document.getElementById("out");
+      var mainOut = document.getElementById("polygonOut");
+      var summary = document.getElementById("yahooSummary");
+      var ticker = (document.getElementById("polygonTicker").value || "symbol").trim() || "symbol";
+
+      var textParts = [
+        "=== Capture Output ===",
+        (topOut && (topOut.innerText || topOut.textContent || "").trim()) || "(empty)",
+        "",
+        "=== Data / Decision Output ===",
+        (mainOut && (mainOut.innerText || mainOut.textContent || "").trim()) || "(empty)",
+        "",
+        "=== Yahoo Summary ===",
+        (summary && (summary.innerText || summary.textContent || "").trim()) || "(empty)"
+      ];
+      var allText = textParts.join("\\n");
+
+      var stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      var fileName = "trader-results-" + ticker.replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + stamp + ".txt";
+
+      var blob = new Blob([allText], { type: "text/plain;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      var original = btn.textContent;
+      btn.textContent = "Downloaded!";
       setTimeout(function () { btn.textContent = original; }, 1400);
     };
   </script>
