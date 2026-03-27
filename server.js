@@ -71,6 +71,31 @@ const DEBUG_PORT = 9222;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "admin";
+const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS || "qwe123";
+
+function basicAuth(req, res, next) {
+  const auth = req.headers.authorization || "";
+  if (!auth.startsWith("Basic ")) {
+    res.set("WWW-Authenticate", 'Basic realm="Restricted Area"');
+    return res.status(401).send("Authentication required.");
+  }
+
+  const base64 = auth.split(" ")[1];
+  const decoded = Buffer.from(base64, "base64").toString("utf8");
+  const sep = decoded.indexOf(":");
+  const user = sep >= 0 ? decoded.slice(0, sep) : "";
+  const pass = sep >= 0 ? decoded.slice(sep + 1) : "";
+
+  if (user === BASIC_AUTH_USER && pass === BASIC_AUTH_PASS) {
+    return next();
+  }
+
+  res.set("WWW-Authenticate", 'Basic realm="Restricted Area"');
+  return res.status(401).send("Invalid credentials.");
+}
+
+app.use(basicAuth);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -168,6 +193,7 @@ app.get("/", (req, res) => {
     <p style="margin-top:0.5rem;">
       <button type="button" id="btnDecision" style="background:#009688;">Pipeline: 6 steps + pre-filter (preview)</button>
       <button type="button" id="btnPayloadOnly" style="background:#00695c;">Classic single LLM payload only</button>
+      <button type="button" id="btnCopyResults" style="background:#455a64;">Copy all results</button>
     </p>
   </div>
 
@@ -379,6 +405,57 @@ app.get("/", (req, res) => {
         out.className = "result error";
         out.textContent = "Error: " + e.message;
       }
+    };
+
+    document.getElementById("btnCopyResults").onclick = async function () {
+      var btn = this;
+      var topOut = document.getElementById("out");
+      var mainOut = document.getElementById("polygonOut");
+      var summary = document.getElementById("yahooSummary");
+
+      var textParts = [
+        "=== Capture Output ===",
+        (topOut && (topOut.innerText || topOut.textContent || "").trim()) || "(empty)",
+        "",
+        "=== Data / Decision Output ===",
+        (mainOut && (mainOut.innerText || mainOut.textContent || "").trim()) || "(empty)",
+        "",
+        "=== Yahoo Summary ===",
+        (summary && (summary.innerText || summary.textContent || "").trim()) || "(empty)"
+      ];
+      var allText = textParts.join("\n");
+
+      async function tryClipboardWrite(t) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(t);
+          return true;
+        }
+        return false;
+      }
+
+      function fallbackCopy(t) {
+        var ta = document.createElement("textarea");
+        ta.value = t;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        return ok;
+      }
+
+      var original = btn.textContent;
+      try {
+        var copied = await tryClipboardWrite(allText);
+        if (!copied) copied = fallbackCopy(allText);
+        btn.textContent = copied ? "Copied!" : "Copy failed";
+      } catch (e) {
+        btn.textContent = "Copy failed";
+      }
+      setTimeout(function () { btn.textContent = original; }, 1400);
     };
   </script>
 </body>
